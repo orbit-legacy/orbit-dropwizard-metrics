@@ -43,6 +43,16 @@ public class MetricsExtension implements ActorExtension
 {
     private List<ReporterConfig> metricsConfig = new ArrayList<>();
 
+    public MetricsExtension()
+    {
+
+    }
+
+    public MetricsExtension(List<ReporterConfig> metricsConfigs)
+    {
+        metricsConfig.addAll(metricsConfigs);
+    }
+
     @Override
     public Task<?> start()
     {
