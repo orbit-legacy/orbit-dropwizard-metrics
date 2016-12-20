@@ -75,18 +75,18 @@ public class OrbitMessagingMetricsExtension extends NamedPipelineExtension
     private void setupMetrics()
     {
         //inbound
-        receiveMeters.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:one_way_message,direction:inbound]"));
-        receiveMeters.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:request_message,direction:inbound]"));
-        receiveMeters.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_error,direction:inbound]"));
-        receiveMeters.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_ok,direction:inbound]"));
-        receiveMeters.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_protocol_error,direction:inbound]"));
+        receiveMeters.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:one_way_message direction:inbound]"));
+        receiveMeters.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:request_message direction:inbound]"));
+        receiveMeters.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_error direction:inbound]"));
+        receiveMeters.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_ok direction:inbound]"));
+        receiveMeters.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_protocol_error direction:inbound]"));
 
         //outbound
-        sendMeters.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:one_way_message,direction:outbound]"));
-        sendMeters.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:request_message,direction:outbound]"));
-        sendMeters.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_error,direction:outbound]"));
-        sendMeters.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_ok,direction:outbound]"));
-        sendMeters.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_protocol_error,direction:outbound]"));
+        sendMeters.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:one_way_message direction:outbound]"));
+        sendMeters.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:request_message direction:outbound]"));
+        sendMeters.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_error direction:outbound]"));
+        sendMeters.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_ok direction:outbound]"));
+        sendMeters.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_protocol_error direction:outbound]"));
     }
 
     @Override
