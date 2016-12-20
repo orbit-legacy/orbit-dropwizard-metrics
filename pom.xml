@@ -55,7 +55,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <dependencies>
         <dependency>
             <groupId>cloud.orbit</groupId>
-            <artifactId>orbit-core</artifactId>
+            <artifactId>orbit-runtime</artifactId>
             <version>${orbit.version}</version>
         </dependency>
         <dependency>
