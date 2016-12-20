@@ -30,6 +30,8 @@ package cloud.orbit.actors.extensions.metrics.dropwizard;
 
 import org.coursera.metrics.datadog.DatadogReporter;
 import org.coursera.metrics.datadog.transport.HttpTransport;
+import org.coursera.metrics.datadog.transport.Transport;
+import org.coursera.metrics.datadog.transport.UdpTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,17 +48,36 @@ public class DatadogReporterConfig extends ReporterConfig
 {
     private static final Logger logger = LoggerFactory.getLogger(DatadogReporterConfig.class);
 
-    private String host;
+
+    //Http mode
     private String apiKey;
+
+    //UDP mode
+    private String statsdHost;
+    private int statsdPort;
+
+    private String mode;//http or udp
 
     @Override
     public synchronized ScheduledReporter enableReporter(MetricRegistry registry)
     {
-        final HttpTransport httpTransport = new HttpTransport.Builder().withApiKey(apiKey).build();
+        Transport transport = null;
+        if ("http".equalsIgnoreCase(mode))
+        {
+            transport = new HttpTransport.Builder().withApiKey(apiKey).build();
+        }
+        else if ("udp".equalsIgnoreCase(mode))
+        {
+            transport = new UdpTransport.Builder().withStatsdHost(statsdHost).withPort(statsdPort).build();
+        }
+        else
+        {
+            logger.error("Invalid mode for Datadog reporter.");
+        }
         DatadogReporter datadogReporter = null;
         try
         {
-            datadogReporter = DatadogReporter.forRegistry(registry).withHost(InetAddress.getLocalHost().getCanonicalHostName()).withPrefix(this.getPrefix()).withTransport(httpTransport).build();
+            datadogReporter = DatadogReporter.forRegistry(registry).withHost(InetAddress.getLocalHost().getCanonicalHostName()).withPrefix(this.getPrefix()).withTransport(transport).build();
         }
         catch (UnknownHostException e)
         {
@@ -68,18 +89,43 @@ public class DatadogReporterConfig extends ReporterConfig
         return datadogReporter;
     }
 
-    public String getHost()
-    {
-        return host;
-    }
-
     public String getApiKey()
     {
         return apiKey;
     }
 
-    public void setHost(final String host)
+    public void setApiKey(final String apiKey)
     {
-        this.host = host;
+        this.apiKey = apiKey;
+    }
+
+    public void setStatsdHost(final String statsdHost)
+    {
+        this.statsdHost = statsdHost;
+    }
+
+    public void setStatsdPort(final int statsdPort)
+    {
+        this.statsdPort = statsdPort;
+    }
+
+    public void setMode(final String mode)
+    {
+        this.mode = mode;
+    }
+
+    public String getStatsdHost()
+    {
+        return statsdHost;
+    }
+
+    public int getStatsdPort()
+    {
+        return statsdPort;
+    }
+
+    public String getMode()
+    {
+        return mode;
     }
 }
