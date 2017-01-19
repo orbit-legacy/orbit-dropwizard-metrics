@@ -19,8 +19,12 @@ Examples
 ======
 To Use The Extension
 -----
-Modify Orbit configuration to include the extension: 
+Modify Orbit configuration(orbit.yaml) to include the extension: 
 ```
+cloud.orbit.actors.Stage:
+  !!cloud.orbit.actors.Stage
+  {
+      ...
       !!cloud.orbit.actors.extensions.metrics.dropwizard.MetricsExtension {
         metricsConfig:
         [
@@ -30,7 +34,9 @@ Modify Orbit configuration to include the extension:
             mode: http
             }
         ]
-      }
+      },
+      ...
+  } 
 ```
 
 And then you can start to report metrics in you application:
@@ -38,13 +44,65 @@ And then you can start to report metrics in you application:
     MetricsManager.getInstance().getRegistry().counter("start_times").inc(1);
 ```
 
+MetricExtension supports 4 different reporters: JMX, Graphite, Ganglia and Datadog reporter. 
+###JMX reporter configuration
+| property     | description    | comment |
+| --------|---------|-------|
+| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
+| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
+###Graphite reporter configuration
+| property     | description    | comment |
+| --------|---------|-------|
+| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
+| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
+| prefix | prefix for all the metrics | User defined string     |
+| host | Graphite server host |      |
+| port | Graphite server running port |     |
+###Ganglia reporter configuration
+| property     | description    | comment |
+| --------|---------|-------|
+| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
+| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
+| prefix | prefix for all the metrics | User defined string     |
+| host | Ganglia server host |      |
+| port | Ganglia server running port |     |
+###Datadog reporter configuration
+| property     | description    | comment |
+| --------|---------|-------|
+| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
+| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
+| prefix | prefix for all the metrics | User defined string     |
+| mode | Metrics reportingm mode | Can be "udp" or "http"     |
+| apiKey | API key of Datadog service | Only apply in "http" mode    |
+| statsdHost | StatsD agent host |  Only apply in "udp" mode   |
+| statsdPort | StatsD agent port |  Only apply in "udp" mode   |
+
 To Report The Metrics of Orbit Cluster
------
+--------------------------------------
+This library also include two optional extensions and handler which can be used to report metrics about Orbit cluster itself. These two extensions and handler depend on "MetricExtension".
 Extension "OrbitActorExtension" collects metrics related to actor information. "OrbitMessagingMetricsExtension" collects the metrics related the Orbit messaging. 
 
 Modify Orbit configuration to include them if you want to report the metrics of Orbit cluster:
 ```
+cloud.orbit.actors.Stage:
+  !!cloud.orbit.actors.Stage
+  {
+      ...
       !!cloud.orbit.actors.extensions.metrics.dropwizard.OrbitActorExtension {},
 
-      !!cloud.orbit.actors.extensions.metrics.dropwizard.OrbitMessagingMetricsExtension {}
+      !!cloud.orbit.actors.extensions.metrics.dropwizard.OrbitMessagingMetricsExtension {},
+      ...
+  } 
 ```
+
+Handler - "OrbitMetricsInvocationHandler" reports response time histogram for actors.  Modify Orbit configuration to use it:
+
+```
+cloud.orbit.actors.Stage:
+  !!cloud.orbit.actors.Stage
+  {
+    ...
+    invocationHandler:
+      !!cloud.orbit.actors.extensions.metrics.dropwizard.OrbitMetricsInvocationHandler {}
+  } 
+ ```
