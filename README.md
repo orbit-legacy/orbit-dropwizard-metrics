@@ -78,8 +78,9 @@ MetricExtension supports 4 different reporters: JMX, Graphite, Ganglia and Datad
 | statsdPort | StatsD agent port |  Only apply in "udp" mode   |
 
 To Report The Metrics of Orbit Cluster
---------------------------------------
+-----
 This library also include two optional extensions and handler which can be used to report metrics about Orbit cluster itself. These two extensions and handler depend on "MetricExtension".
+
 Extension "OrbitActorExtension" collects metrics related to actor information. "OrbitMessagingMetricsExtension" collects the metrics related the Orbit messaging. 
 
 Modify Orbit configuration to include them if you want to report the metrics of Orbit cluster:
