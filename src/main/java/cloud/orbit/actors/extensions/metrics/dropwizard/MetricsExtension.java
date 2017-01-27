@@ -28,6 +28,8 @@
 
 package cloud.orbit.actors.extensions.metrics.dropwizard;
 
+import com.codahale.metrics.MetricRegistry;
+
 import cloud.orbit.actors.extensions.ActorExtension;
 import cloud.orbit.actors.extensions.LifetimeExtension;
 import cloud.orbit.actors.extensions.NamedPipelineExtension;
@@ -39,30 +41,33 @@ import java.util.List;
 /**
  * Created by jgong on 12/15/16.
  */
-public class MetricsExtension implements ActorExtension
-{
+public class MetricsExtension implements ActorExtension {
     private List<ReporterConfig> metricsConfig = new ArrayList<>();
 
-    public MetricsExtension()
-    {
+    /**
+     * Alternative way to construct the extension, client is responsible to setup the
+     * MetricRegistry
+     */
+    public MetricsExtension(MetricRegistry metricRegistry) {
+        MetricsManager.getInstance().setRegistry(metricRegistry);
+    }
+
+    public MetricsExtension() {
 
     }
 
-    public MetricsExtension(List<ReporterConfig> metricsConfigs)
-    {
+    public MetricsExtension(List<ReporterConfig> metricsConfigs) {
         metricsConfig.addAll(metricsConfigs);
     }
 
     @Override
-    public Task<?> start()
-    {
+    public Task<?> start() {
         MetricsManager.getInstance().initializeMetrics(metricsConfig);
         return Task.done();
     }
 
     @Override
-    public Task<?> stop()
-    {
+    public Task<?> stop() {
         return Task.done();
     }
 
