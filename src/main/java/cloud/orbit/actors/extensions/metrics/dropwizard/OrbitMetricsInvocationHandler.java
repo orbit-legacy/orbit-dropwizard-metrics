@@ -42,30 +42,27 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Created by jgong on 12/19/16.
  */
-public class OrbitMetricsInvocationHandler extends InvocationHandler
-{
+public class OrbitMetricsInvocationHandler extends InvocationHandler {
     private Map<String, Histogram> actorResponseTimeHistograms = new ConcurrentHashMap<>();
 
     @Override
-    public void afterInvoke(final long startTimeMs, final Invocation invocation, final Method method)
-    {
+    public void afterInvoke(final long startTimeMs, final Invocation invocation, final Method method) {
         final RemoteReference toReference = invocation.getToReference();
         super.afterInvoke(startTimeMs, invocation, method);
         final long durationNanos = (System.nanoTime() - startTimeMs);
-
+        final Double durationMs = durationNanos / 1_000_000.0;
         Class actorClass = RemoteReference.getInterfaceClass(toReference);
         Histogram hist = actorResponseTimeHistograms.get(actorClass.getSimpleName());
-        if(null == hist)
-        {
+        if (null == hist) {
             hist = MetricsManager.getInstance().getRegistry().histogram(getActorResponseTimeMetricKey(actorClass));
             actorResponseTimeHistograms.put(actorClass.getSimpleName(), hist);
         }
 
-        hist.update(durationNanos);
+        hist.update(durationMs.intValue());
 
     }
 
-    public static String getActorResponseTimeMetricKey(Class actorClass){
+    public static String getActorResponseTimeMetricKey(Class actorClass) {
         return String.format("orbit.actors.responsetimehistogram[actor:%s]", actorClass.getSimpleName());
     }
 }

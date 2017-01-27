@@ -117,7 +117,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     {
         Object id = RemoteReference.getId(actor);
         //Actor count(per type)
-        String actorCounterKey = getActorCounterMetricsKey(actor.getClass());
+        String actorCounterKey = getActorCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
         Counter counter = MetricsManager.getInstance().getRegistry().counter(actorCounterKey);
         if (null == counter)
         {
@@ -131,11 +131,11 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
 
         actorStartTimes.put(startTimeKey, System.currentTimeMillis());
 
-        String actorLifeSpanHistogramKey = getActorLifeSpanHistogramMetricsKey(actor.getClass());
+        String actorLifeSpanHistogramKey = getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor));
         Histogram histogram = actorLifeSpanHistograms.get(actorLifeSpanHistogramKey);
         if (null == histogram)
         {
-            histogram = MetricsManager.getInstance().getRegistry().histogram(getActorLifeSpanHistogramMetricsKey(actor.getClass()));
+            histogram = MetricsManager.getInstance().getRegistry().histogram(getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor)));
             actorLifeSpanHistograms.put(actorLifeSpanHistogramKey, histogram);
         }
 
@@ -147,7 +147,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     public Task<?> postDeactivation(final AbstractActor<?> actor)
     {
         //actor counter per type and node
-        String actorCounterKey = getActorCounterMetricsKey(actor.getClass());
+        String actorCounterKey = getActorCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
         Counter counter = MetricsManager.getInstance().getRegistry().counter(actorCounterKey);
         counter.dec();
 
@@ -162,7 +162,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
                 actorStartTimes.remove(startTimeKey);
             }
 
-            String actorLifeSpanHistogramKey = getActorLifeSpanHistogramMetricsKey(actor.getClass());
+            String actorLifeSpanHistogramKey = getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor));
             Histogram histogram = actorLifeSpanHistograms.get(actorLifeSpanHistogramKey);
             if (null != histogram)
             {
@@ -175,7 +175,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     public static String getActorStartTimeKey(final AbstractActor<?> actor)
     {
         Object id = RemoteReference.getId(actor);
-        return String.format("actors.%s.%s.starttime", actor.getClass().getSimpleName(), id);
+        return String.format("actors.%s.%s.starttime", RemoteReference.getInterfaceClass(actor).getSimpleName(), id);
     }
 
     /**

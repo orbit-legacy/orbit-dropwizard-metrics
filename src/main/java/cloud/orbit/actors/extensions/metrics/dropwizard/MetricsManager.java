@@ -43,79 +43,66 @@ import java.util.Map;
 /**
  * Created by jgong on 11/29/16.
  */
-public class MetricsManager
-{
+public class MetricsManager {
 
     private static MetricsManager instance = new MetricsManager();
-    private static final MetricRegistry registry = new MetricRegistry();
+    private MetricRegistry registry;
     private Map<ReporterConfig, Reporter> reporters = new HashMap<>();
 
     private static final Logger logger = LoggerFactory.getLogger(MetricsManager.class);
 
     private boolean isInitialized = false;
 
-    public MetricsManager()
-    {
+    public MetricsManager() {
 
     }
 
-    public static MetricsManager getInstance()
-    {
+    public static MetricsManager getInstance() {
         return instance;
     }
 
-    public MetricRegistry getRegistry()
-    {
+    public MetricRegistry getRegistry() {
         return registry;
     }
 
-    public synchronized void initializeMetrics(List<ReporterConfig> reporterConfigs)
-    {
-        if (!isInitialized)
-        {
-            for (ReporterConfig reporterConfig : reporterConfigs)
-            {
+    public synchronized void initializeMetrics(List<ReporterConfig> reporterConfigs) {
+        if (!isInitialized) {
+            registry = new MetricRegistry();
+            for (ReporterConfig reporterConfig : reporterConfigs) {
                 Reporter reporter = reporterConfig.enableReporter(registry);
-                if (reporter != null)
-                {
+                if (reporter != null) {
                     reporters.put(reporterConfig, reporter);
-                }
-                else
-                {
+                } else {
                     logger.warn("Failed to enable reporter " + reporterConfig.getClass().getName());
                 }
             }
             isInitialized = true;
             logger.info("Orbit Metrics Initialized.");
-        }
-        else
-        {
-            if (logger.isWarnEnabled())
-            {
+        } else {
+            if (logger.isWarnEnabled()) {
                 logger.warn("Attempting to initialize the Metrics Manager when it is already initialized!");
             }
         }
-        }
+    }
 
-    public void registerMetric(String name, Metric metric)
-    {
-        try
-        {
+    public void registerMetric(String name, Metric metric) {
+        try {
             registry.register(name, metric);
 
-            if (logger.isDebugEnabled())
-            {
+            if (logger.isDebugEnabled()) {
                 logger.debug("Registered new metric " + name);
             }
-        }
-        catch (IllegalArgumentException iae)
-        {
+        } catch (IllegalArgumentException iae) {
             logger.warn("Unable to register metric " + name + " because a metric already has been registered with the same name");
         }
     }
 
-    public void unregisterMetric(String name)
-    {
+    public void unregisterMetric(String name) {
         registry.remove(name);
+    }
+
+    public void setRegistry(MetricRegistry registry) {
+        this.registry = registry;
+        isInitialized = true;
     }
 }
