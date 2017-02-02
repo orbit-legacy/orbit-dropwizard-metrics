@@ -32,6 +32,7 @@ import org.junit.Test;
 
 import com.codahale.metrics.MetricRegistry;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -51,5 +52,30 @@ public class MetricsExtensionTest
     public void constructWithConfigs_nullArgument_throws() throws Exception
     {
         new MetricsExtension((List<ReporterConfig>) null);
+    }
+
+    @Test
+    public void constructEmpty_hasRegistry() throws Exception
+    {
+        MetricsManager.getInstance().setRegistry(null);
+        new MetricsExtension();
+        assertNotNull(MetricsManager.getInstance().getRegistry());
+    }
+
+    @Test
+    public void constructWithRegistry_hasRegistry() throws Exception
+    {
+        MetricRegistry registry = new MetricRegistry();
+        MetricsManager.getInstance().setRegistry(null);
+        new MetricsExtension(registry);
+        assertEquals(registry, MetricsManager.getInstance().getRegistry());
+    }
+
+    @Test
+    public void constructWithConfigs_hasRegistry() throws Exception
+    {
+        MetricsManager.getInstance().setRegistry(null);
+        new MetricsExtension(Collections.emptyList());
+        assertNotNull(MetricsManager.getInstance().getRegistry());
     }
 }

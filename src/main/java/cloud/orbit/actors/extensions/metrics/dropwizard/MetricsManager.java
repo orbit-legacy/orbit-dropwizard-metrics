@@ -67,7 +67,6 @@ public class MetricsManager {
 
     public synchronized void initializeMetrics(List<ReporterConfig> reporterConfigs) {
         if (!isInitialized) {
-            registry = new MetricRegistry();
             for (ReporterConfig reporterConfig : reporterConfigs) {
                 Reporter reporter = reporterConfig.enableReporter(registry);
                 if (reporter != null) {

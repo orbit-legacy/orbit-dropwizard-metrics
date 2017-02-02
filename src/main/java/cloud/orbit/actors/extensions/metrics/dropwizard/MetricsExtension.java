@@ -56,7 +56,7 @@ public class MetricsExtension implements ActorExtension {
     }
 
     public MetricsExtension() {
-
+        MetricsManager.getInstance().setRegistry(new MetricRegistry());
     }
 
     public MetricsExtension(List<ReporterConfig> metricsConfigs) {
@@ -64,6 +64,7 @@ public class MetricsExtension implements ActorExtension {
             throw new IllegalArgumentException("metricsConfigs cannot be null");
         }
         metricsConfig.addAll(metricsConfigs);
+        MetricsManager.getInstance().setRegistry(new MetricRegistry());
     }
 
     @Override
