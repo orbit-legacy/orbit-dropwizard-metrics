@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2016 Electronic Arts Inc.  All rights reserved.
+ Copyright (C) 2017 Electronic Arts Inc.  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
@@ -28,53 +28,28 @@
 
 package cloud.orbit.actors.extensions.metrics.dropwizard;
 
+import org.junit.Test;
+
 import com.codahale.metrics.MetricRegistry;
 
-import cloud.orbit.actors.extensions.ActorExtension;
-import cloud.orbit.actors.extensions.LifetimeExtension;
-import cloud.orbit.actors.extensions.NamedPipelineExtension;
-import cloud.orbit.concurrent.Task;
-
-import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.*;
+
 /**
- * Created by jgong on 12/15/16.
+ * Created by asnyder on 2/2/17.
  */
-public class MetricsExtension implements ActorExtension {
-    private List<ReporterConfig> metricsConfig = new ArrayList<>();
-
-    /**
-     * Alternative way to construct the extension, client is responsible to setup the
-     * MetricRegistry
-     */
-    public MetricsExtension(MetricRegistry metricRegistry) {
-        if (metricRegistry == null) {
-            throw new IllegalArgumentException("metricRegistry cannot be null");
-        }
-        MetricsManager.getInstance().setRegistry(metricRegistry);
+public class MetricsExtensionTest
+{
+    @Test(expected = IllegalArgumentException.class)
+    public void constructWithRegistry_nullArgument_throws() throws Exception
+    {
+        new MetricsExtension((MetricRegistry) null);
     }
 
-    public MetricsExtension() {
-
+    @Test(expected = IllegalArgumentException.class)
+    public void constructWithConfigs_nullArgument_throws() throws Exception
+    {
+        new MetricsExtension((List<ReporterConfig>) null);
     }
-
-    public MetricsExtension(List<ReporterConfig> metricsConfigs) {
-        if (metricsConfigs == null) {
-            throw new IllegalArgumentException("metricsConfigs cannot be null");
-        }
-        metricsConfig.addAll(metricsConfigs);
-    }
-
-    @Override
-    public Task<?> start() {
-        MetricsManager.getInstance().initializeMetrics(metricsConfig);
-        return Task.done();
-    }
-
-    @Override
-    public Task<?> stop() {
-        return Task.done();
-    }
-
 }
