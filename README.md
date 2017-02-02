@@ -76,6 +76,12 @@ MetricExtension supports 4 different reporters: JMX, Graphite, Ganglia and Datad
 | apiKey | API key of Datadog service | Only apply in "http" mode    |
 | statsdHost | StatsD agent host |  Only apply in "udp" mode   |
 | statsdPort | StatsD agent port |  Only apply in "udp" mode   |
+###Console reporter configuration
+| property     | description    | comment |
+| --------|---------|-------|
+| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
+| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
+| output | PrintStream to use for output |  Default: System.out   |
 
 To Report The Metrics of Orbit Cluster
 -----
