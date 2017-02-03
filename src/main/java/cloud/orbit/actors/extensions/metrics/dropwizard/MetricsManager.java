@@ -102,6 +102,6 @@ public class MetricsManager {
 
     public void setRegistry(MetricRegistry registry) {
         this.registry = registry;
-        isInitialized = true;
+        this.isInitialized = false;
     }
 }
