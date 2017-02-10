@@ -43,26 +43,47 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by jgong on 12/19/16.
  */
 public class OrbitMetricsInvocationHandler extends InvocationHandler {
-    private Map<String, Histogram> actorResponseTimeHistograms = new ConcurrentHashMap<>();
+    private Map<String, Histogram> actorMethodResponseTimeHistograms = new ConcurrentHashMap<>();
+    private Map<String, Histogram> actorChainResponseTimeHistograms = new ConcurrentHashMap<>();
 
     @Override
-    public void afterInvoke(final long startTimeMs, final Invocation invocation, final Method method) {
+    public void afterInvoke(final long startTimeNanos, final Invocation invocation, final Method method) {
         final RemoteReference toReference = invocation.getToReference();
-        super.afterInvoke(startTimeMs, invocation, method);
-        final long durationNanos = (System.nanoTime() - startTimeMs);
+        super.afterInvoke(startTimeNanos, invocation, method);
+        final long durationNanos = (System.nanoTime() - startTimeNanos);
         final Double durationMs = durationNanos / 1_000_000.0;
         Class actorClass = RemoteReference.getInterfaceClass(toReference);
-        Histogram hist = actorResponseTimeHistograms.get(actorClass.getSimpleName());
+        String histKey = getActorMethodResponseTimeMetricKey(actorClass, method.getName());
+        Histogram hist = actorMethodResponseTimeHistograms.get(histKey);
         if (null == hist) {
-            hist = MetricsManager.getInstance().getRegistry().histogram(getActorResponseTimeMetricKey(actorClass));
-            actorResponseTimeHistograms.put(actorClass.getSimpleName(), hist);
+            hist = MetricsManager.getInstance().getRegistry().histogram(histKey);
+            actorMethodResponseTimeHistograms.put(histKey, hist);
         }
-
         hist.update(durationMs.intValue());
-
     }
 
-    public static String getActorResponseTimeMetricKey(Class actorClass) {
-        return String.format("orbit.actors.responsetimehistogram[actor:%s]", actorClass.getSimpleName());
+    @Override
+    public void taskComplete(long startTimeNanos, Invocation invocation, Method method) {
+        final RemoteReference toReference = invocation.getToReference();
+        super.afterInvoke(startTimeNanos, invocation, method);
+        final long durationNanos = (System.nanoTime() - startTimeNanos);
+        final Double durationMs = durationNanos / 1_000_000.0;
+        Class actorClass = RemoteReference.getInterfaceClass(toReference);
+        String histKey = getActorChainResponseTimeMetricKey(actorClass, method.getName());
+        Histogram hist = actorChainResponseTimeHistograms.get(histKey);
+        if (null == hist) {
+            hist = MetricsManager.getInstance().getRegistry().histogram(histKey);
+            actorChainResponseTimeHistograms.put(histKey, hist);
+        }
+        hist.update(durationMs.intValue());
+    }
+
+
+    public static String getActorMethodResponseTimeMetricKey(Class actorClass, String methodName) {
+        return String.format("orbit.actors.methodresponsetimehistogram[actor:%s,method:%s]", actorClass.getSimpleName(), methodName);
+    }
+
+    public static String getActorChainResponseTimeMetricKey(Class actorClass, String methodName) {
+        return String.format("orbit.actors.chainresponsetimehistogram[actor:%s,method:%s]", actorClass.getSimpleName(), methodName);
     }
 }
