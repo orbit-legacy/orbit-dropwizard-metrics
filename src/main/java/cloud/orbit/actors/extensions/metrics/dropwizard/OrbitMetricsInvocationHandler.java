@@ -52,17 +52,18 @@ public class OrbitMetricsInvocationHandler extends InvocationHandler {
         final long durationNanos = (System.nanoTime() - startTimeMs);
         final Double durationMs = durationNanos / 1_000_000.0;
         Class actorClass = RemoteReference.getInterfaceClass(toReference);
-        Histogram hist = actorResponseTimeHistograms.get(actorClass.getSimpleName());
+        String histKey = getActorResponseTimeMetricKey(actorClass, method.getName());
+        Histogram hist = actorResponseTimeHistograms.get(histKey);
         if (null == hist) {
-            hist = MetricsManager.getInstance().getRegistry().histogram(getActorResponseTimeMetricKey(actorClass));
-            actorResponseTimeHistograms.put(actorClass.getSimpleName(), hist);
+            hist = MetricsManager.getInstance().getRegistry().histogram(histKey);
+            actorResponseTimeHistograms.put(histKey, hist);
         }
 
         hist.update(durationMs.intValue());
 
     }
 
-    public static String getActorResponseTimeMetricKey(Class actorClass) {
-        return String.format("orbit.actors.responsetimehistogram[actor:%s]", actorClass.getSimpleName());
+    public static String getActorResponseTimeMetricKey(Class actorClass, String methodName) {
+        return String.format("orbit.actors.responsetimehistogram[actor:%s,method:%s]", actorClass.getSimpleName(), methodName);
     }
 }
