@@ -32,11 +32,9 @@ import com.codahale.metrics.Histogram;
 
 import cloud.orbit.actors.runtime.DefaultInvocationHandler;
 import cloud.orbit.actors.runtime.Invocation;
-import cloud.orbit.actors.runtime.InvocationHandler;
 import cloud.orbit.actors.runtime.RemoteReference;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
