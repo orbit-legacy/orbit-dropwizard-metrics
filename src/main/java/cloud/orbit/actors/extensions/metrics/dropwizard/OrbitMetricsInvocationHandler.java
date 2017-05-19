@@ -30,19 +30,19 @@ package cloud.orbit.actors.extensions.metrics.dropwizard;
 
 import com.codahale.metrics.Histogram;
 
+import cloud.orbit.actors.runtime.DefaultInvocationHandler;
 import cloud.orbit.actors.runtime.Invocation;
-import cloud.orbit.actors.runtime.InvocationHandler;
 import cloud.orbit.actors.runtime.RemoteReference;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by jgong on 12/19/16.
  */
-public class OrbitMetricsInvocationHandler extends InvocationHandler {
+public class OrbitMetricsInvocationHandler extends DefaultInvocationHandler
+{
     private Map<String, Histogram> actorMethodResponseTimeHistograms = new ConcurrentHashMap<>();
     private Map<String, Histogram> actorChainResponseTimeHistograms = new ConcurrentHashMap<>();
 
