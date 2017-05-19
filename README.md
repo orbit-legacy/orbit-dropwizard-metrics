@@ -45,12 +45,16 @@ And then you can start to report metrics in you application:
 ```
 
 MetricExtension supports 4 different reporters: JMX, Graphite, Ganglia and Datadog reporter. 
-###JMX reporter configuration
+
+### JMX reporter configuration
+
 | property     | description    | comment |
 | --------|---------|-------|
 | rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
 | durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
-###Graphite reporter configuration
+
+### Graphite reporter configuration
+
 | property     | description    | comment |
 | --------|---------|-------|
 | rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
@@ -58,7 +62,8 @@ MetricExtension supports 4 different reporters: JMX, Graphite, Ganglia and Datad
 | prefix | prefix for all the metrics | User defined string     |
 | host | Graphite server host |      |
 | port | Graphite server running port |     |
-###Ganglia reporter configuration
+### Ganglia reporter configuration
+
 | property     | description    | comment |
 | --------|---------|-------|
 | rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
@@ -66,7 +71,9 @@ MetricExtension supports 4 different reporters: JMX, Graphite, Ganglia and Datad
 | prefix | prefix for all the metrics | User defined string     |
 | host | Ganglia server host |      |
 | port | Ganglia server running port |     |
-###Datadog reporter configuration
+
+### Datadog reporter configuration
+
 | property     | description    | comment |
 | --------|---------|-------|
 | rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
@@ -76,7 +83,9 @@ MetricExtension supports 4 different reporters: JMX, Graphite, Ganglia and Datad
 | apiKey | API key of Datadog service | Only apply in "http" mode    |
 | statsdHost | StatsD agent host |  Only apply in "udp" mode   |
 | statsdPort | StatsD agent port |  Only apply in "udp" mode   |
-###Console reporter configuration
+
+### Console reporter configuration
+
 | property     | description    | comment |
 | --------|---------|-------|
 | rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
