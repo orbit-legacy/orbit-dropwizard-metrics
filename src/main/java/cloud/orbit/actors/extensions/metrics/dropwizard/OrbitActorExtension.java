@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 
 import cloud.orbit.actors.Actor;
 import cloud.orbit.actors.extensions.LifetimeExtension;
@@ -48,25 +49,26 @@ import cloud.orbit.concurrent.Task;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
- * A pipeline Extension to collect the actor's metrics: number of actor, actor lifespans distribution, actor message received rate
+ * A pipeline Extension to collect the actor's metrics: number of actor, actor lifespans distribution, actor message
+ * received rate
  *
  * Created by jgong on 12/16/16.
  */
 public class OrbitActorExtension extends NamedPipelineExtension implements LifetimeExtension
 {
     private static final Logger logger = LoggerFactory.getLogger(OrbitActorExtension.class);
-  
+
     public static final String ACTOR_METRICS_PIPELINE_NAME = "actor-metrics-pipeline";
 
     //Actor Counter, per actor type and node, actor count breakdown to each type
     Map<String, Counter> actorCounters = new HashMap<>();
 
-    //Timer, per actor instance
-    Map<String, Long> actorStartTimes = new ConcurrentHashMap<>();
-
-    Map<String, Histogram> actorLifeSpanHistograms = new HashMap<>();
+    //Timer context, per actor instance
+    Map<String, Long> actorLifespanStartTimes = new ConcurrentHashMap<>();
+    Map<String, Timer> actorLifeSpanTimers = new HashMap<>();
 
     Map<String, Meter> actorMsgReceivedRate = new HashMap<>();
 
@@ -93,7 +95,8 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
             Meter msgReceivedMeter = actorMsgReceivedRate.get(toClass.getSimpleName());
             if (null == msgReceivedMeter)
             {
-                msgReceivedMeter = MetricsManager.getInstance().getRegistry().meter(getActorMessageReceiveRateMetricKey(toClass));
+                msgReceivedMeter =
+                    MetricsManager.getInstance().getRegistry().meter(getActorMessageReceiveRateMetricKey(toClass));
                 actorMsgReceivedRate.put(toClass.getSimpleName(), msgReceivedMeter);
             }
             msgReceivedMeter.mark();
@@ -116,18 +119,22 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
         counter.inc();
 
         //Actor lifespan
-        String startTimeKey = getActorStartTimeKey(actor);
-
-        actorStartTimes.put(startTimeKey, System.currentTimeMillis());
-
-        String actorLifeSpanHistogramKey = getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor));
-        Histogram histogram = actorLifeSpanHistograms.get(actorLifeSpanHistogramKey);
-        if (null == histogram)
+        String startTimeKey = getActorLifespanStartTimeKey(actor);
+        String timerMetricKey = getActorLifeSpanTimerMetricsKey(RemoteReference.getInterfaceClass(actor));
+        Timer timer = actorLifeSpanTimers.get(timerMetricKey);
+        if (null == timer)
         {
-            histogram = MetricsManager.getInstance().getRegistry().histogram(getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor)));
-            actorLifeSpanHistograms.put(actorLifeSpanHistogramKey, histogram);
+            timer = MetricsManager.getInstance().getRegistry().timer(timerMetricKey);
         }
-
+        if (null != timer)
+        {
+            actorLifeSpanTimers.put(timerMetricKey, timer);
+            actorLifespanStartTimes.put(startTimeKey, System.nanoTime());
+        }
+        else
+        {
+            logger.error("Unable to get Timer for {}", RemoteReference.getInterfaceClass(actor).getName());
+        }
 
         return Task.done();
     }
@@ -141,34 +148,28 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
         counter.dec();
 
         //actor lifespan
-        String startTimeKey = getActorStartTimeKey(actor);
+        String timerMetricKey = getActorLifeSpanTimerMetricsKey(RemoteReference.getInterfaceClass(actor));
+        Timer timer = actorLifeSpanTimers.get(timerMetricKey);
 
-        Long startTime = actorStartTimes.get(startTimeKey);
-        if (null != startTime)
+        String startTimeKey = getActorLifespanStartTimeKey(actor);
+        Long startTime = actorLifespanStartTimes.get(startTimeKey);
+        if (null != timer && null != startTime)
         {
-            actorStartTimes.remove(startTimeKey);
-
-            String actorLifeSpanHistogramKey = getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor));
-            Histogram histogram = actorLifeSpanHistograms.get(actorLifeSpanHistogramKey);
-            if (null != histogram)
-            {
-                histogram.update(System.currentTimeMillis() - startTime);
-            }
+            Double timeSpan = (System.nanoTime() - startTime) / 1_000_000.0;
+            timer.update(timeSpan.longValue(), TimeUnit.MILLISECONDS);
+            actorLifespanStartTimes.remove(startTimeKey);
         }
         return Task.done();
     }
 
-    public static String getActorStartTimeKey(final AbstractActor<?> actor)
+    public static String getActorLifespanStartTimeKey(final AbstractActor<?> actor)
     {
         Object id = RemoteReference.getId(actor);
-        return String.format("actors.%s.%s.starttime", RemoteReference.getInterfaceClass(actor).getSimpleName(), id);
+        return String.format("actors.%s.%s.startTime", RemoteReference.getInterfaceClass(actor).getSimpleName(), id);
     }
 
     /**
      * Metric key: Actor message receive rate
-     *
-     * @param actorClass
-     * @return
      */
     public static String getActorMessageReceiveRateMetricKey(Class<? extends Actor> actorClass)
     {
@@ -177,9 +178,6 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
 
     /**
      * Metrics key: Actor count for a type on one node
-     *
-     * @param actorClass
-     * @return
      */
     public static String getActorCounterMetricsKey(Class<? extends Actor> actorClass)
     {
@@ -188,11 +186,8 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
 
     /**
      * Metric key: lifespan histogram for a type of actor
-     *
-     * @param actorClass
-     * @return
      */
-    public static String getActorLifeSpanHistogramMetricsKey(Class<? extends Actor> actorClass)
+    public static String getActorLifeSpanTimerMetricsKey(Class<? extends Actor> actorClass)
     {
         return String.format("orbit.actors.lifespanhistogram[actor:%s]", actorClass.getSimpleName());
     }
