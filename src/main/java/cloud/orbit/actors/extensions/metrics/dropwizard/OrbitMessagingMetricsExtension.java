@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 
 import cloud.orbit.actors.extensions.NamedPipelineExtension;
 import cloud.orbit.actors.net.HandlerContext;
@@ -42,6 +43,7 @@ import cloud.orbit.concurrent.Task;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Extension to collectdion Orbit messaging related metrics
@@ -53,16 +55,14 @@ public class OrbitMessagingMetricsExtension extends NamedPipelineExtension
     private static final Logger logger = LoggerFactory.getLogger(OrbitMessagingMetricsExtension.class);
   
     public static final String MESSAGING_METRICS_PIPELINE_NAME = "messaging-metrics-pipeline";
+    private static final String MESSAGING_METRICS_HEADER_TIMESTAMP = "metrics-ts";
 
-    //Metrics Meters
-    private Map<Integer, Meter> receiveMeters = new HashMap<>();
-    private Map<Integer, Meter> sendMeters = new HashMap<>();
-
+    private Map<Integer, Timer> inboundMetrics = new HashMap<>();
+    private Map<Integer, Meter> outboundMetrics = new HashMap<>();
 
     public OrbitMessagingMetricsExtension()
     {
-        super(MESSAGING_METRICS_PIPELINE_NAME, null, DefaultHandlers.MESSAGING);
-        setupMetrics();
+        this(MESSAGING_METRICS_PIPELINE_NAME, null, DefaultHandlers.MESSAGING);
     }
 
     public OrbitMessagingMetricsExtension(final String name, final String beforeHandlerName, final String afterHandlerName)
@@ -74,46 +74,52 @@ public class OrbitMessagingMetricsExtension extends NamedPipelineExtension
 
     private void setupMetrics()
     {
-        //inbound
-        receiveMeters.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:one_way_message,direction:inbound]"));
-        receiveMeters.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:request_message,direction:inbound]"));
-        receiveMeters.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_error,direction:inbound]"));
-        receiveMeters.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_ok,direction:inbound]"));
-        receiveMeters.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_protocol_error,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:one_way_message,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:request_message,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:response_error,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:response_ok,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:response_protocol_error,direction:inbound]"));
 
-        //outbound
-        sendMeters.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:one_way_message,direction:outbound]"));
-        sendMeters.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:request_message,direction:outbound]"));
-        sendMeters.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_error,direction:outbound]"));
-        sendMeters.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_ok,direction:outbound]"));
-        sendMeters.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_protocol_error,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:one_way_message,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:request_message,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_error,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_ok,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_protocol_error,direction:outbound]"));
     }
 
     @Override
-    public void onRead(HandlerContext ctx, Object message)
+    public void onRead(HandlerContext ctx, Object object)
     {
-        if (message instanceof Message)
+        long now = System.currentTimeMillis();
+        if (object instanceof Message)
         {
-            Meter meter = receiveMeters.get(((Message) message).getMessageType());
-            if (null != meter)
+            Message message = (Message) object;
+            Long messageCreationTimestamp = (Long) message.getHeader(MESSAGING_METRICS_HEADER_TIMESTAMP);
+            Timer metric = inboundMetrics.get(message.getMessageType());
+            if (metric != null)
             {
-                meter.mark();
+                if(messageCreationTimestamp != null) {
+                    metric.update(now - messageCreationTimestamp, TimeUnit.MILLISECONDS);
+                }
             }
         }
-        ctx.fireRead(message);
+        ctx.fireRead(object);
     }
 
     @Override
-    public Task<?> write(HandlerContext ctx, Object message) throws Exception
+    public Task<?> write(HandlerContext ctx, Object object) throws Exception
     {
-        if (message instanceof Message)
+        if (object instanceof Message)
         {
-            Meter meter = sendMeters.get(((Message) message).getMessageType());
-            if (null != meter)
+            Message message = (Message) object;
+            Meter metric = outboundMetrics.get(message.getMessageType());
+            if (metric != null)
             {
-                meter.mark();
+                metric.mark();
             }
+            
+            message.setHeader(MESSAGING_METRICS_HEADER_TIMESTAMP, Long.valueOf(System.currentTimeMillis()));
         }
-        return ctx.write(message);
+        return ctx.write(object);
     }
 }

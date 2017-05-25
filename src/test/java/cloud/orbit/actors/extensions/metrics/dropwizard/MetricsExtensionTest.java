@@ -54,9 +54,6 @@ public class MetricsExtensionTest
     public void setUp() throws Exception
     {
         initMocks(this);
-        Field f = MetricsManager.class.getDeclaredField("instance");
-        f.setAccessible(true);
-        f.set(null, new MetricsManager());
     }
 
     @Test(expected = IllegalArgumentException.class)
