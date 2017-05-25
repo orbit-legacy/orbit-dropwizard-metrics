@@ -66,8 +66,9 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     //Actor Counter, per actor type and node, actor count breakdown to each type
     Map<String, Counter> actorCounters = new HashMap<>();
 
-    //Timer context, per actor instance
-    Map<String, Long> actorLifespanStartTimes = new ConcurrentHashMap<>();
+    //Actor lifespan: actor's activation time in nano second, per actor instance
+    Map<String, Long> actorActivationTimes = new ConcurrentHashMap<>();
+    //Actor lifespan: Timer metric, per actor type
     Map<String, Timer> actorLifeSpanTimers = new HashMap<>();
 
     Map<String, Meter> actorMsgReceivedRate = new HashMap<>();
@@ -96,7 +97,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
             if (null == msgReceivedMeter)
             {
                 msgReceivedMeter =
-                    MetricsManager.getInstance().getRegistry().meter(getActorMessageReceiveRateMetricKey(toClass));
+                        MetricsManager.getInstance().getRegistry().meter(getActorMessageReceiveRateMetricKey(toClass));
                 actorMsgReceivedRate.put(toClass.getSimpleName(), msgReceivedMeter);
             }
             msgReceivedMeter.mark();
@@ -129,7 +130,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
         if (null != timer)
         {
             actorLifeSpanTimers.put(timerMetricKey, timer);
-            actorLifespanStartTimes.put(startTimeKey, System.nanoTime());
+            actorActivationTimes.put(startTimeKey, System.nanoTime());
         }
         else
         {
@@ -152,12 +153,12 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
         Timer timer = actorLifeSpanTimers.get(timerMetricKey);
 
         String startTimeKey = getActorLifespanStartTimeKey(actor);
-        Long startTime = actorLifespanStartTimes.get(startTimeKey);
+        Long startTime = actorActivationTimes.get(startTimeKey);
         if (null != timer && null != startTime)
         {
             Double timeSpan = (System.nanoTime() - startTime) / 1_000_000.0;
             timer.update(timeSpan.longValue(), TimeUnit.MILLISECONDS);
-            actorLifespanStartTimes.remove(startTimeKey);
+            actorActivationTimes.remove(startTimeKey);
         }
         return Task.done();
     }
