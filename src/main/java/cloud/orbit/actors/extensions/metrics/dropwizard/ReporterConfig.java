@@ -38,13 +38,11 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class ReporterConfig
 {
-
     private int period = 1;
     private String periodUnit = "MINUTES";
     private String rateUnit = "SECONDS";
     private String durationUnit = "MILLISECONDS";
     private String prefix = "";
-
 
     public int getPeriod()
     {

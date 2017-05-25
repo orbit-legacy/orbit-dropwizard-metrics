@@ -34,7 +34,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 		<version>1</version>
 	</parent>
 	
-    <groupId>cloud.orbit</groupId>
     <artifactId>orbit-dropwizard-metrics</artifactId>
     <version>1.0.1-SNAPSHOT</version>
     <name>Orbit Dropwizard Extension</name>

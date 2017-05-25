@@ -58,6 +58,4 @@ public class Slf4jReporterConfig extends ReporterConfig {
 
         return reporter;
     }
-
-
 }
