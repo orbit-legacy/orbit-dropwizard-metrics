@@ -48,6 +48,10 @@ public class MetricsManager {
     private MetricRegistry registry;
     private boolean isInitialized = false;
 
+    private MetricsManager() {
+        this.registry = new MetricRegistry();
+    }
+
     public static MetricsManager getInstance() {
         return instance;
     }
