@@ -77,7 +77,13 @@ public class DatadogReporterConfig extends ReporterConfig
         DatadogReporter datadogReporter = null;
         try
         {
-            datadogReporter = DatadogReporter.forRegistry(registry).withHost(InetAddress.getLocalHost().getCanonicalHostName()).withPrefix(this.getPrefix()).withTransport(transport).build();
+            datadogReporter = DatadogReporter.forRegistry(registry)
+                .convertRatesTo(getRateTimeUnit())
+                .convertDurationsTo(getDurationTimeUnit())
+                .withHost(InetAddress.getLocalHost().getCanonicalHostName())
+                .withPrefix(this.getPrefix())
+                .withTransport(transport)
+                .build();
         }
         catch (UnknownHostException e)
         {
