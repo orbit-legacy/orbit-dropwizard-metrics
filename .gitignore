@@ -4,3 +4,6 @@ target
 *.versionsBackup
 dependency-reduced-pom.xml
 tests.yml
+.classpath
+.settings
+.project

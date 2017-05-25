@@ -50,13 +50,13 @@ import java.util.Map;
  */
 public class OrbitMessagingMetricsExtension extends NamedPipelineExtension
 {
+    private static final Logger logger = LoggerFactory.getLogger(OrbitMessagingMetricsExtension.class);
+  
     public static final String MESSAGING_METRICS_PIPELINE_NAME = "messaging-metrics-pipeline";
 
-    private Logger logger = LoggerFactory.getLogger(OrbitMessagingMetricsExtension.class);
-
     //Metrics Meters
-    private Map<Integer, Meter> receiveMeters = new HashMap();
-    private Map<Integer, Meter> sendMeters = new HashMap();
+    private Map<Integer, Meter> receiveMeters = new HashMap<>();
+    private Map<Integer, Meter> sendMeters = new HashMap<>();
 
 
     public OrbitMessagingMetricsExtension()
@@ -104,7 +104,7 @@ public class OrbitMessagingMetricsExtension extends NamedPipelineExtension
     }
 
     @Override
-    public Task write(HandlerContext ctx, Object message) throws Exception
+    public Task<?> write(HandlerContext ctx, Object message) throws Exception
     {
         if (message instanceof Message)
         {

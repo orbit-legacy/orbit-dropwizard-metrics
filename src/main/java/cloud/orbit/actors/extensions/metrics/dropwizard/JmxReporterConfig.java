@@ -37,11 +37,6 @@ import com.codahale.metrics.Reporter;
  */
 public class JmxReporterConfig extends ReporterConfig
 {
-    public JmxReporterConfig()
-    {
-
-    }
-
     @Override
     public synchronized Reporter enableReporter(MetricRegistry registry)
     {

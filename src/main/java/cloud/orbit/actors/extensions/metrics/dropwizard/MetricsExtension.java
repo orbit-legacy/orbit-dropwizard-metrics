@@ -31,8 +31,6 @@ package cloud.orbit.actors.extensions.metrics.dropwizard;
 import com.codahale.metrics.MetricRegistry;
 
 import cloud.orbit.actors.extensions.ActorExtension;
-import cloud.orbit.actors.extensions.LifetimeExtension;
-import cloud.orbit.actors.extensions.NamedPipelineExtension;
 import cloud.orbit.concurrent.Task;
 
 import java.util.ArrayList;
