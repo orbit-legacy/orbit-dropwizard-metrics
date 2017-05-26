@@ -31,9 +31,8 @@ package cloud.orbit.actors.extensions.metrics.dropwizard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 
 import cloud.orbit.actors.Actor;
 import cloud.orbit.actors.extensions.LifetimeExtension;
@@ -60,16 +59,10 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
   
     public static final String ACTOR_METRICS_PIPELINE_NAME = "actor-metrics-pipeline";
 
-    //Actor Counter, per actor type and node, actor count breakdown to each type
-    Map<String, Counter> actorCounters = new HashMap<>();
-
-    //Timer, per actor instance
-    Map<String, Long> actorStartTimes = new ConcurrentHashMap<>();
-
-    Map<String, Histogram> actorLifeSpanHistograms = new HashMap<>();
+    Map<String, Timer.Context> actorActivationTimers = new ConcurrentHashMap<>();
+    Map<String, Timer.Context> actorLifespanTimers = new ConcurrentHashMap<>();
 
     Map<String, Meter> actorMsgReceivedRate = new HashMap<>();
-
 
     public OrbitActorExtension()
     {
@@ -93,7 +86,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
             Meter msgReceivedMeter = actorMsgReceivedRate.get(toClass.getSimpleName());
             if (null == msgReceivedMeter)
             {
-                msgReceivedMeter = MetricsManager.getInstance().getRegistry().meter(getActorMessageReceiveRateMetricKey(toClass));
+                msgReceivedMeter = MetricsManager.getInstance().getRegistry().meter(getActorTypeMessageReceiveRateKey(toClass));
                 actorMsgReceivedRate.put(toClass.getSimpleName(), msgReceivedMeter);
             }
             msgReceivedMeter.mark();
@@ -101,99 +94,104 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
         }
         ctx.fireRead(message);
     }
+    
+    @Override
+    public Task<?> preActivation(AbstractActor<?> actor) {
+        String actorTypeActivationKey = getActorTypeActivationKey(RemoteReference.getInterfaceClass(actor));
+        Timer.Context actorTimer = MetricsManager.getInstance().getRegistry().timer(actorTypeActivationKey).time();
+        
+        String startTimeKey = getActorTimerKey(actor);
+        actorActivationTimers.put(startTimeKey, actorTimer);
+        
+        return Task.done();
+    }
 
     @Override
     public Task<?> postActivation(final AbstractActor<?> actor)
     {
-        //Actor count(per type)
-        String actorCounterKey = getActorCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
-        Counter counter = MetricsManager.getInstance().getRegistry().counter(actorCounterKey);
-        if (null == counter)
-        {
-            counter = MetricsManager.getInstance().getRegistry().counter(actorCounterKey);
-            actorCounters.put(actorCounterKey, counter);
+        Timer.Context actorActivationTimer = actorActivationTimers.remove(getActorTimerKey(actor));
+        if (actorActivationTimer != null) {
+            actorActivationTimer.stop();
         }
-        counter.inc();
+        
+        String actorCounterKey = getActorTypeCounterKey(RemoteReference.getInterfaceClass(actor));
+        MetricsManager.getInstance().getRegistry().counter(actorCounterKey).inc();
 
-        //Actor lifespan
-        String startTimeKey = getActorStartTimeKey(actor);
+        String actorTypeLifespanKey = getActorTypeLifespanKey(RemoteReference.getInterfaceClass(actor));
+        Timer.Context actorLifespanTimer = MetricsManager.getInstance().getRegistry().timer(actorTypeLifespanKey).time();
 
-        actorStartTimes.put(startTimeKey, System.currentTimeMillis());
+        String startTimeKey = getActorTimerKey(actor);
+        actorLifespanTimers.put(startTimeKey, actorLifespanTimer);
+        
+        return Task.done();
+    }
 
-        String actorLifeSpanHistogramKey = getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor));
-        Histogram histogram = actorLifeSpanHistograms.get(actorLifeSpanHistogramKey);
-        if (null == histogram)
-        {
-            histogram = MetricsManager.getInstance().getRegistry().histogram(getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor)));
-            actorLifeSpanHistograms.put(actorLifeSpanHistogramKey, histogram);
+    @Override
+    public Task<?> preDeactivation(AbstractActor<?> actor) {
+        Timer.Context actorTimer = actorLifespanTimers.remove(getActorTimerKey(actor));
+        if (actorTimer != null) {
+            actorTimer.stop();
         }
-
-
+        
+        String actorCounterKey = getActorTypeCounterKey(RemoteReference.getInterfaceClass(actor));
+        MetricsManager.getInstance().getRegistry().counter(actorCounterKey).dec();
+        
         return Task.done();
     }
 
     @Override
     public Task<?> postDeactivation(final AbstractActor<?> actor)
     {
-        //actor counter per type and node
-        String actorCounterKey = getActorCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
-        Counter counter = MetricsManager.getInstance().getRegistry().counter(actorCounterKey);
-        counter.dec();
-
-        //actor lifespan
-        String startTimeKey = getActorStartTimeKey(actor);
-
-        Long startTime = actorStartTimes.get(startTimeKey);
-        if (null != startTime)
-        {
-            actorStartTimes.remove(startTimeKey);
-
-            String actorLifeSpanHistogramKey = getActorLifeSpanHistogramMetricsKey(RemoteReference.getInterfaceClass(actor));
-            Histogram histogram = actorLifeSpanHistograms.get(actorLifeSpanHistogramKey);
-            if (null != histogram)
-            {
-                histogram.update(System.currentTimeMillis() - startTime);
-            }
-        }
         return Task.done();
     }
 
-    public static String getActorStartTimeKey(final AbstractActor<?> actor)
+    private String getActorTimerKey(final AbstractActor<?> actor)
     {
         Object id = RemoteReference.getId(actor);
-        return String.format("actors.%s.%s.starttime", RemoteReference.getInterfaceClass(actor).getSimpleName(), id);
+        return String.format("actors.%s.%s.timer", RemoteReference.getInterfaceClass(actor).getSimpleName(), id);
     }
 
     /**
-     * Metric key: Actor message receive rate
+     * Metric key: Message receive rate for a type of actor
      *
      * @param actorClass
      * @return
      */
-    public static String getActorMessageReceiveRateMetricKey(Class<? extends Actor> actorClass)
+    private String getActorTypeMessageReceiveRateKey(Class<? extends Actor> actorClass)
     {
         return String.format("orbit.actors.msg_received_rate[[actor:%s]]", actorClass.getSimpleName());
     }
 
     /**
-     * Metrics key: Actor count for a type on one node
+     * Metrics key: Actor count for a type of actor
      *
      * @param actorClass
      * @return
      */
-    public static String getActorCounterMetricsKey(Class<? extends Actor> actorClass)
+    private String getActorTypeCounterKey(Class<? extends Actor> actorClass)
     {
         return String.format("orbit.actors.count[actor:%s]", actorClass.getSimpleName());
     }
 
     /**
-     * Metric key: lifespan histogram for a type of actor
+     * Metric key: Activation time for a type of actor
      *
      * @param actorClass
      * @return
      */
-    public static String getActorLifeSpanHistogramMetricsKey(Class<? extends Actor> actorClass)
+    private String getActorTypeActivationKey(Class<? extends Actor> actorClass)
     {
-        return String.format("orbit.actors.lifespanhistogram[actor:%s]", actorClass.getSimpleName());
+        return String.format("orbit.actors.activation_time[actor:%s]", actorClass.getSimpleName());
+    }
+
+    /**
+     * Metric key: lifespan for a type of actor
+     *
+     * @param actorClass
+     * @return
+     */
+    private String getActorTypeLifespanKey(Class<? extends Actor> actorClass)
+    {
+        return String.format("orbit.actors.lifespan[actor:%s]", actorClass.getSimpleName());
     }
 }

@@ -3,7 +3,6 @@ package cloud.orbit.actors.extensions.metrics.dropwizard;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 
-import java.util.Arrays;
 import java.util.SortedMap;
 
 import org.junit.Before;
