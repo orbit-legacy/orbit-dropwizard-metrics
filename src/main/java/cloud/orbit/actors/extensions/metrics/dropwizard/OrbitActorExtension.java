@@ -128,6 +128,10 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     @Override
     public Task<?> preDeactivation(final AbstractActor<?> actor)
     {
+        //actor counter per type and node
+        String actorCounterKey = getActorTypeCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
+        MetricsManager.getInstance().getRegistry().counter(actorCounterKey).dec();
+
         //deactivation timer
         String actorDeactivationTimerKey = getActorTimerKey(actor);
         String actorDeactivationMetricsKey = getActorTypeDeactivationMetricsKey(RemoteReference.getInterfaceClass(actor));
@@ -149,10 +153,6 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     @Override
     public Task<?> postDeactivation(final AbstractActor<?> actor)
     {
-        //actor counter per type and node
-        String actorCounterKey = getActorTypeCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
-        MetricsManager.getInstance().getRegistry().counter(actorCounterKey).dec();
-
         //actor deactivation
         String actorDeactivationTimerKey = getActorTimerKey(actor);
         Timer.Context deactivationTimer = actorDeactivationTimers.remove(actorDeactivationTimerKey);
