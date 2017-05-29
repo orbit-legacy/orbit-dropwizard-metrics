@@ -31,9 +31,7 @@ package cloud.orbit.actors.extensions.metrics.dropwizard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 
 import cloud.orbit.actors.Actor;
@@ -46,34 +44,49 @@ import cloud.orbit.actors.runtime.Invocation;
 import cloud.orbit.actors.runtime.RemoteReference;
 import cloud.orbit.concurrent.Task;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A pipeline Extension to collect the actor's metrics: number of actor, actor lifespans distribution, actor message received rate
+ * A pipeline Extension to collect the actor's metrics: number of actor, actor lifetimes distribution, actor message received rate
  *
  * Created by jgong on 12/16/16.
  */
-public class OrbitActorExtension extends NamedPipelineExtension implements LifetimeExtension
+public class OrbitMetricsActorExtension extends NamedPipelineExtension implements LifetimeExtension
 {
-    private static final Logger logger = LoggerFactory.getLogger(OrbitActorExtension.class);
+    private static final Logger logger = LoggerFactory.getLogger(OrbitMetricsActorExtension.class);
 
     public static final String ACTOR_METRICS_PIPELINE_NAME = "actor-metrics-pipeline";
 
-    //Timer, per actor instance
-    Map<String, Timer.Context> actorActivationTimers = new ConcurrentHashMap<>();
-    Map<String, Timer.Context> actorLifeSpanTimers = new ConcurrentHashMap<>();
-    Map<String, Timer.Context> actorDeactivationTimers = new ConcurrentHashMap<>();
+    private Map<String, Timer.Context> actorActivationTimers = new ConcurrentHashMap<>();
+    private Map<String, Timer.Context> actorLifetimeTimers = new ConcurrentHashMap<>();
+    private Map<String, Timer.Context> actorDeactivationTimers = new ConcurrentHashMap<>();
 
-    public OrbitActorExtension()
+    private MetricRegistry metricRegistry;
+
+    public OrbitMetricsActorExtension()
     {
-        super(ACTOR_METRICS_PIPELINE_NAME, null, DefaultHandlers.EXECUTION);
+        this(new MetricRegistry());
     }
 
-    public OrbitActorExtension(final String name, final String beforeHandlerName, final String afterHandlerName)
+    public OrbitMetricsActorExtension(MetricRegistry metricRegistry)
+    {
+        this(metricRegistry, ACTOR_METRICS_PIPELINE_NAME, null, DefaultHandlers.EXECUTION);
+    }
+    
+    public OrbitMetricsActorExtension(final String name, final String beforeHandlerName, final String afterHandlerName)
+    {
+        this(new MetricRegistry(), name, beforeHandlerName, afterHandlerName);
+    }
+    
+    public OrbitMetricsActorExtension(final MetricRegistry metricRegistry, final String name, final String beforeHandlerName, final String afterHandlerName)
     {
         super(name, beforeHandlerName, afterHandlerName);
+        this.metricRegistry = metricRegistry;
+    }
+    
+    public MetricRegistry getMetricRegistry() {
+        return metricRegistry;
     }
 
     @Override
@@ -85,7 +98,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
             //process invocation metrics
             final RemoteReference toReference = invocation.getToReference();
             Class toClass = RemoteReference.getInterfaceClass(toReference);
-            MetricsManager.getInstance().getRegistry().meter(getActorTypeMessageReceiveRateMetricsKey(toClass)).mark();
+            metricRegistry.meter(getActorTypeMessageReceiveRateMetricsKey(toClass)).mark();
         }
         ctx.fireRead(message);
     }
@@ -93,10 +106,10 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     @Override
     public Task<?> preActivation(final AbstractActor<?> actor)
     {
-        String actorTypeActivationTimerKey = getActorTypeActivationMetricsKey(RemoteReference.getInterfaceClass(actor));
-        Timer.Context timer = MetricsManager.getInstance().getRegistry().timer(actorTypeActivationTimerKey).time();
-        String activationTimerKey = getActorTimerKey(actor);
-        actorActivationTimers.put(activationTimerKey, timer);
+        String actorTypeActivationMetricsKey = getActorTypeActivationMetricsKey(RemoteReference.getInterfaceClass(actor));
+        Timer.Context timer = metricRegistry.timer(actorTypeActivationMetricsKey).time();
+        String actorActivationTimerKey = getActorTimerKey(actor);
+        actorActivationTimers.put(actorActivationTimerKey, timer);
 
         return Task.done();
     }
@@ -104,23 +117,19 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     @Override
     public Task<?> postActivation(final AbstractActor<?> actor)
     {
-        //Actor count(per type)
-        String actorCounterKey = getActorTypeCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
-        MetricsManager.getInstance().getRegistry().counter(actorCounterKey).inc();
-
-        //activation timer
         Timer.Context actorActivationTimer = actorActivationTimers.remove(getActorTimerKey(actor));
         if (null != actorActivationTimer)
         {
             actorActivationTimer.stop();
         }
+        
+        String actorCounterKey = getActorTypeCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
+        metricRegistry.counter(actorCounterKey).inc();
 
-        //Actor lifespan
-        String actorLifespanTimerKey = getActorTimerKey(actor);
-        String actorTypeLifespanMetricsKey = getActorTypeLifeSpanMetricsKey(RemoteReference.getInterfaceClass(actor));
-
-        Timer.Context timer = MetricsManager.getInstance().getRegistry().timer(actorTypeLifespanMetricsKey).time();
-        actorLifeSpanTimers.put(actorLifespanTimerKey, timer);
+        String actorTypeLifetimeMetricsKey = getActorTypeLifetimeMetricsKey(RemoteReference.getInterfaceClass(actor));
+        Timer.Context timer = metricRegistry.timer(actorTypeLifetimeMetricsKey).time();
+        String actorLifetimeTimerKey = getActorTimerKey(actor);
+        actorLifetimeTimers.put(actorLifetimeTimerKey, timer);
 
         return Task.done();
     }
@@ -128,24 +137,19 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     @Override
     public Task<?> preDeactivation(final AbstractActor<?> actor)
     {
-        //actor counter per type and node
-        String actorCounterKey = getActorTypeCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
-        MetricsManager.getInstance().getRegistry().counter(actorCounterKey).dec();
-
-        //deactivation timer
-        String actorDeactivationTimerKey = getActorTimerKey(actor);
-        String actorDeactivationMetricsKey = getActorTypeDeactivationMetricsKey(RemoteReference.getInterfaceClass(actor));
-        Timer.Context timer = MetricsManager.getInstance().getRegistry().timer(actorDeactivationMetricsKey).time();
-        actorDeactivationTimers.put(actorDeactivationTimerKey, timer);
-
-        //Actor lifespan
-        String actorLifespanTimerKey = getActorTimerKey(actor);
-        String actorTypeLifespanMetricsKey = getActorTypeLifeSpanMetricsKey(RemoteReference.getInterfaceClass(actor));
-        Timer.Context lifespanTimer = actorLifeSpanTimers.remove(actorLifespanTimerKey);
-        if (null != lifespanTimer)
+        Timer.Context lifetimeTimer = actorLifetimeTimers.remove(getActorTimerKey(actor));
+        if (null != lifetimeTimer)
         {
-            lifespanTimer.stop();
+            lifetimeTimer.stop();
         }
+
+        String actorCounterKey = getActorTypeCounterMetricsKey(RemoteReference.getInterfaceClass(actor));
+        metricRegistry.counter(actorCounterKey).dec();
+
+        String actorDeactivationMetricsKey = getActorTypeDeactivationMetricsKey(RemoteReference.getInterfaceClass(actor));
+        Timer.Context timer = metricRegistry.timer(actorDeactivationMetricsKey).time();
+        String actorDeactivationTimerKey = getActorTimerKey(actor);
+        actorDeactivationTimers.put(actorDeactivationTimerKey, timer);
 
         return Task.done();
     }
@@ -153,9 +157,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     @Override
     public Task<?> postDeactivation(final AbstractActor<?> actor)
     {
-        //actor deactivation
-        String actorDeactivationTimerKey = getActorTimerKey(actor);
-        Timer.Context deactivationTimer = actorDeactivationTimers.remove(actorDeactivationTimerKey);
+        Timer.Context deactivationTimer = actorDeactivationTimers.remove(getActorTimerKey(actor));
         if (null != deactivationTimer)
         {
             deactivationTimer.stop();
@@ -178,7 +180,7 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
      */
     public static String getActorTypeMessageReceiveRateMetricsKey(Class<? extends Actor> actorClass)
     {
-        return String.format("orbit.actors.msg_received_rate[[actor:%s]]", actorClass.getSimpleName());
+        return String.format("orbit.actors.msg_received_rate[actor:%s]", actorClass.getSimpleName());
     }
 
     /**
@@ -193,14 +195,14 @@ public class OrbitActorExtension extends NamedPipelineExtension implements Lifet
     }
 
     /**
-     * Metrics key: lifespan timer for a type of actor
+     * Metrics key: lifetime timer for a type of actor
      *
      * @param actorClass
      * @return
      */
-    public static String getActorTypeLifeSpanMetricsKey(Class<? extends Actor> actorClass)
+    public static String getActorTypeLifetimeMetricsKey(Class<? extends Actor> actorClass)
     {
-        return String.format("orbit.actors.lifespan[actor:%s]", actorClass.getSimpleName());
+        return String.format("orbit.actors.lifetime[actor:%s]", actorClass.getSimpleName());
     }
 
     /**

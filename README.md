@@ -12,113 +12,48 @@ This project was developed by [Electronic Arts](http://www.ea.com) and is licens
 
 Introduction
 ======
-The Metrics Extension is a wrapper of Dropwizard Metrics library - http://metrics.dropwizard.io/. Out of the box, it support four different reporters: Ganglia, Graphite, JMX and Datadog. 
-It also contains Orbit extensions and handler for user to collect the metrics of Orbit cluster. 
+Allows for the collection of metrics in relation to how an application interacts with Orbit.
 
-Examples
+Metrics Exposed
 ======
-To Use The Extension
------
-Modify Orbit configuration(orbit.yaml) to include the extension: 
-```
-cloud.orbit.actors.Stage:
-  !!cloud.orbit.actors.Stage
-  {
-      ...
-      !!cloud.orbit.actors.extensions.metrics.dropwizard.MetricsExtension {
-        metricsConfig:
-        [
-          !!cloud.orbit.actors.extensions.metrics.dropwizard.DatadogReporterConfig {
-            prefix: you-prefix,
-            apiKey: you-datadog-api-key,
-            mode: http
-            }
-        ]
-      },
-      ...
-  } 
-```
 
-And then you can start to report metrics in you application:
-```
-    MetricsManager.getInstance().getRegistry().counter("start_times").inc(1);
-```
+* OrbitMetricsActorExtension
+    * Actor Activation Timer
+        * orbit.actors.activation_time[actor:%s]
+    * Actor Lifetime Timer
+        * orbit.actors.lifetime[actor:%s]
+    * Actor Deactivation Timer
+        * orbit.actors.deactivation_time[actor:%s]
+    * Actor Active Count
+        * orbit.actors.count[actor:%s]
+    * Actor Message Receive Rate Meter
+        * orbit.actors.msg_received_rate[actor:%s]
+* OrbitMetricsMessagingExtension
+    * Inbound Message Timer per Message Type
+        * orbit.messaging[type:%s,direction:inbound]
+    * Outbound Message Meter per Message Type
+        * orbit.messaging[type:%s,direction:outbound]
+* OrbitMetricsInvocationHandler
+    * Invocation Timers
+        * orbit.actors.methodresponsetime[actor:%s,method:%s]
+        * orbit.actors.chainresponsetime[actor:%s,method:%s]
 
-MetricExtension supports 4 different reporters: JMX, Graphite, Ganglia and Datadog reporter. 
-
-### JMX reporter configuration
-
-| property     | description    | comment |
-| --------|---------|-------|
-| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
-| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
-
-### Graphite reporter configuration
-
-| property     | description    | comment |
-| --------|---------|-------|
-| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
-| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
-| prefix | prefix for all the metrics | User defined string     |
-| host | Graphite server host |      |
-| port | Graphite server running port |     |
-### Ganglia reporter configuration
-
-| property     | description    | comment |
-| --------|---------|-------|
-| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
-| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
-| prefix | prefix for all the metrics | User defined string     |
-| host | Ganglia server host |      |
-| port | Ganglia server running port |     |
-
-### Datadog reporter configuration
-
-| property     | description    | comment |
-| --------|---------|-------|
-| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
-| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
-| prefix | prefix for all the metrics | User defined string     |
-| mode | Metrics reportingm mode | Can be "udp" or "http"     |
-| apiKey | API key of Datadog service | Only apply in "http" mode    |
-| statsdHost | StatsD agent host |  Only apply in "udp" mode   |
-| statsdPort | StatsD agent port |  Only apply in "udp" mode   |
-
-### Console reporter configuration
-
-| property     | description    | comment |
-| --------|---------|-------|
-| rateUnit  | Rate time unit   | From NANOSECONDS to DAYS defined in Java TimeUnit class    |
-| durationUnit | Duration time unit | From NANOSECONDS to DAYS defined in Java TimeUnit class     |
-| output | PrintStream to use for output |  Default: System.out   |
-
-To Report The Metrics of Orbit Cluster
------
-This library also include two optional extensions and handler which can be used to report metrics about Orbit cluster itself. These two extensions and handler depend on "MetricExtension".
-
-Extension "OrbitActorExtension" collects metrics related to actor information. "OrbitMessagingMetricsExtension" collects the metrics related the Orbit messaging. 
-
-Modify Orbit configuration to include them if you want to report the metrics of Orbit cluster:
-```
-cloud.orbit.actors.Stage:
-  !!cloud.orbit.actors.Stage
-  {
-      ...
-      !!cloud.orbit.actors.extensions.metrics.dropwizard.OrbitActorExtension {},
-
-      !!cloud.orbit.actors.extensions.metrics.dropwizard.OrbitMessagingMetricsExtension {},
-      ...
-  } 
-```
-
-Handler - "OrbitMetricsInvocationHandler" reports response time histogram for actors.  Modify Orbit configuration to use it:
+Instructions
+======
+If no `MetricRegistry` is provided to the `Extension` or `InvocationHandler` then it will construct a `MetricRegistry` and make it available by calling the getter method. Otherwise the provided `MetricRegistry` will be used.
 
 ```
-cloud.orbit.actors.Stage:
-  !!cloud.orbit.actors.Stage
-  {
-    ...
-    invocationHandler:
-      !!cloud.orbit.actors.extensions.metrics.dropwizard.OrbitMetricsInvocationHandler {}
-  } 
- ```
+MetricRegistry metricRegistry = new MetricRegistry();
+
+OrbitMetricsActorExtension actorExtension = new OrbitMetricsActorExtension(metricRegistry);
+OrbitMetricsMessagingExtension messagingExtension = new OrbitMetricsMessagingExtension(metricRegistry);
+
+OrbitMetricsInvocationHandler invocationHandler = new OrbitMetricsInvocationHandler(metricRegistry);
+
+Builder builder = new Stage.Builder();
+builder.extensions(actorExtension, messagingExtension);
+builder.invocationHandler(invocationHandler);
+Stage stage = builder.build();
+stage.start();
+```
+

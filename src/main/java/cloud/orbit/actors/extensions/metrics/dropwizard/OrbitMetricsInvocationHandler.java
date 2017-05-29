@@ -28,15 +28,13 @@
 
 package cloud.orbit.actors.extensions.metrics.dropwizard;
 
-import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
 
 import cloud.orbit.actors.runtime.DefaultInvocationHandler;
 import cloud.orbit.actors.runtime.Invocation;
 import cloud.orbit.actors.runtime.RemoteReference;
 
 import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,36 +42,47 @@ import java.util.concurrent.TimeUnit;
  */
 public class OrbitMetricsInvocationHandler extends DefaultInvocationHandler
 {
+    private MetricRegistry metricRegistry;
+
+    public OrbitMetricsInvocationHandler() {
+        this(new MetricRegistry());
+    }
+    
+    public OrbitMetricsInvocationHandler(MetricRegistry metricRegistry) {
+        super();
+        this.metricRegistry = metricRegistry;
+    }
+    
     @Override
     public void afterInvoke(final long startTimeNanos, final Invocation invocation, final Method method)
     {
-        final RemoteReference toReference = invocation.getToReference();
+        final RemoteReference<?> toReference = invocation.getToReference();
         super.afterInvoke(startTimeNanos, invocation, method);
         final long durationNanos = (System.nanoTime() - startTimeNanos);
-        Class actorClass = RemoteReference.getInterfaceClass(toReference);
+        Class<?> actorClass = RemoteReference.getInterfaceClass(toReference);
         String metricsKey = getActorMethodResponseTimeMetricsKey(actorClass, method.getName());
 
-        MetricsManager.getInstance().getRegistry().timer(metricsKey).update(durationNanos, TimeUnit.NANOSECONDS);
+        metricRegistry.timer(metricsKey).update(durationNanos, TimeUnit.NANOSECONDS);
     }
 
     @Override
     public void taskComplete(long startTimeNanos, Invocation invocation, Method method)
     {
-        final RemoteReference toReference = invocation.getToReference();
+        final RemoteReference<?> toReference = invocation.getToReference();
         super.afterInvoke(startTimeNanos, invocation, method);
         final long durationNanos = (System.nanoTime() - startTimeNanos);
-        Class actorClass = RemoteReference.getInterfaceClass(toReference);
+        Class<?> actorClass = RemoteReference.getInterfaceClass(toReference);
         String metricsKey = getActorChainResponseTimeMetricsKey(actorClass, method.getName());
-        MetricsManager.getInstance().getRegistry().timer(metricsKey).update(durationNanos, TimeUnit.NANOSECONDS);
+        metricRegistry.timer(metricsKey).update(durationNanos, TimeUnit.NANOSECONDS);
     }
 
 
-    public static String getActorMethodResponseTimeMetricsKey(Class actorClass, String methodName)
+    public static String getActorMethodResponseTimeMetricsKey(Class<?> actorClass, String methodName)
     {
         return String.format("orbit.actors.methodresponsetime[actor:%s,method:%s]", actorClass.getSimpleName(), methodName);
     }
 
-    public static String getActorChainResponseTimeMetricsKey(Class actorClass, String methodName)
+    public static String getActorChainResponseTimeMetricsKey(Class<?> actorClass, String methodName)
     {
         return String.format("orbit.actors.chainresponsetime[actor:%s,method:%s]", actorClass.getSimpleName(), methodName);
     }
