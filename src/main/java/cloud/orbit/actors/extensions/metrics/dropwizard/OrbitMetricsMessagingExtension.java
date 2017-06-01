@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 
 import cloud.orbit.actors.extensions.NamedPipelineExtension;
@@ -46,45 +47,62 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Extension to collectdion Orbit messaging related metrics
+ * Extension to collect Orbit messaging related metrics
  *
  * Created by jgong on 12/19/16.
  */
-public class OrbitMessagingMetricsExtension extends NamedPipelineExtension
+public class OrbitMetricsMessagingExtension extends NamedPipelineExtension
 {
-    private static final Logger logger = LoggerFactory.getLogger(OrbitMessagingMetricsExtension.class);
+    private static final Logger logger = LoggerFactory.getLogger(OrbitMetricsMessagingExtension.class);
   
-    public static final String MESSAGING_METRICS_PIPELINE_NAME = "messaging-metrics-pipeline";
+    private static final String MESSAGING_METRICS_PIPELINE_NAME = "messaging-metrics-pipeline";
+    private static final String MESSAGING_METRICS_UNTIMED = "orbit.messaging.untimed";
     private static final String MESSAGING_METRICS_HEADER_TIMESTAMP = "metrics-ts";
+
 
     private Map<Integer, Timer> inboundMetrics = new HashMap<>();
     private Map<Integer, Meter> outboundMetrics = new HashMap<>();
 
-    public OrbitMessagingMetricsExtension()
+    private MetricRegistry metricRegistry;
+
+    public OrbitMetricsMessagingExtension()
     {
-        this(MESSAGING_METRICS_PIPELINE_NAME, null, DefaultHandlers.MESSAGING);
+        this(new MetricRegistry());
+    }
+    
+    public OrbitMetricsMessagingExtension(MetricRegistry metricRegistry) {
+        this(metricRegistry, MESSAGING_METRICS_PIPELINE_NAME, null, DefaultHandlers.MESSAGING);
     }
 
-    public OrbitMessagingMetricsExtension(final String name, final String beforeHandlerName, final String afterHandlerName)
+    public OrbitMetricsMessagingExtension(final String name, final String beforeHandlerName, final String afterHandlerName)
+    {
+        this(new MetricRegistry(), name, beforeHandlerName, afterHandlerName);
+    }
+    
+    public OrbitMetricsMessagingExtension(MetricRegistry metricRegistry, final String name, final String beforeHandlerName, final String afterHandlerName)
     {
         super(name, beforeHandlerName, afterHandlerName);
+        this.metricRegistry = metricRegistry;
         setupMetrics();
     }
 
+    public MetricRegistry getMetricRegistry() {
+        return metricRegistry;
+    }
 
     private void setupMetrics()
     {
-        inboundMetrics.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:one_way_message,direction:inbound]"));
-        inboundMetrics.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:request_message,direction:inbound]"));
-        inboundMetrics.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:response_error,direction:inbound]"));
-        inboundMetrics.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:response_ok,direction:inbound]"));
-        inboundMetrics.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().timer("orbit.messaging[type:response_protocol_error,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.ONE_WAY_MESSAGE, metricRegistry.timer("orbit.messaging[type:one_way_message,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.REQUEST_MESSAGE, metricRegistry.timer("orbit.messaging[type:request_message,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.RESPONSE_ERROR, metricRegistry.timer("orbit.messaging[type:response_error,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.RESPONSE_OK, metricRegistry.timer("orbit.messaging[type:response_ok,direction:inbound]"));
+        inboundMetrics.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, metricRegistry.timer("orbit.messaging[type:response_protocol_error,direction:inbound]"));
 
-        outboundMetrics.put((int) MessageDefinitions.ONE_WAY_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:one_way_message,direction:outbound]"));
-        outboundMetrics.put((int) MessageDefinitions.REQUEST_MESSAGE, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:request_message,direction:outbound]"));
-        outboundMetrics.put((int) MessageDefinitions.RESPONSE_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_error,direction:outbound]"));
-        outboundMetrics.put((int) MessageDefinitions.RESPONSE_OK, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_ok,direction:outbound]"));
-        outboundMetrics.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, MetricsManager.getInstance().getRegistry().meter("orbit.messaging[type:response_protocol_error,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.ONE_WAY_MESSAGE, metricRegistry.meter("orbit.messaging[type:one_way_message,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.REQUEST_MESSAGE, metricRegistry.meter("orbit.messaging[type:request_message,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.RESPONSE_ERROR, metricRegistry.meter("orbit.messaging[type:response_error,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.RESPONSE_OK, metricRegistry.meter("orbit.messaging[type:response_ok,direction:outbound]"));
+        outboundMetrics.put((int) MessageDefinitions.RESPONSE_PROTOCOL_ERROR, metricRegistry.meter("orbit.messaging[type:response_protocol_error,direction:outbound]"));
     }
 
     @Override
@@ -95,12 +113,17 @@ public class OrbitMessagingMetricsExtension extends NamedPipelineExtension
         {
             Message message = (Message) object;
             Long messageCreationTimestamp = (Long) message.getHeader(MESSAGING_METRICS_HEADER_TIMESTAMP);
-            Timer metric = inboundMetrics.get(message.getMessageType());
-            if (metric != null)
+            if(messageCreationTimestamp != null)
             {
-                if(messageCreationTimestamp != null) {
+                Timer metric = inboundMetrics.get(message.getMessageType());
+                if (metric != null)
+                {
                     metric.update(now - messageCreationTimestamp, TimeUnit.MILLISECONDS);
                 }
+            }
+            else
+            {
+                metricRegistry.meter(MESSAGING_METRICS_UNTIMED + "[direction:inbound]").mark();
             }
         }
         ctx.fireRead(object);

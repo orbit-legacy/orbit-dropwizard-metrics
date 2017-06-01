@@ -3,7 +3,6 @@ package cloud.orbit.actors.extensions.metrics.dropwizard;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 
-import java.util.Arrays;
 import java.util.SortedMap;
 
 import org.junit.Before;
@@ -12,29 +11,33 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 
 import cloud.orbit.actors.net.HandlerContext;
 import cloud.orbit.actors.runtime.Message;
 import cloud.orbit.actors.runtime.MessageDefinitions;
 
-public class OrbitMessagingMetricsExtensionTest {
-    private OrbitMessagingMetricsExtension extension;
-    private MetricsManager metricsManager;
+public class OrbitMetricsMessagingExtensionTest {
+    private OrbitMetricsMessagingExtension extension;
 
     @Mock
     private HandlerContext context;
+    
+    private MetricRegistry metricRegistry;
 
     @Before
-    public void before() {
+    public void before()
+    {
         MockitoAnnotations.initMocks(this);
-        metricsManager = MetricsManager.getInstance();
-
-        extension = new OrbitMessagingMetricsExtension();
+        
+        metricRegistry = new MetricRegistry();
+        extension = new OrbitMetricsMessagingExtension(metricRegistry);
     }
 
     @Test
-    public void testWrite_HeaderAdded() throws Exception {
+    public void testWrite_HeaderAdded() throws Exception
+    {
         Message message = new Message();
         extension.write(context, message);
 
@@ -46,9 +49,9 @@ public class OrbitMessagingMetricsExtensionTest {
     }
 
     @Test
-    public void testOnRead_MetricsRecorded() {
-        SortedMap<String, Timer> timers = metricsManager.getRegistry()
-                .getTimers();
+    public void testOnRead_MetricsRecorded()
+    {
+        SortedMap<String, Timer> timers = metricRegistry.getTimers();
         Timer timer = timers.get("orbit.messaging[type:one_way_message,direction:inbound]");
         long count = timer.getCount();
 
@@ -62,9 +65,9 @@ public class OrbitMessagingMetricsExtensionTest {
     }
 
     @Test
-    public void testOnRead_MessageWithoutHeader_Ignored() {
-        SortedMap<String, Timer> timers = metricsManager.getRegistry()
-                .getTimers();
+    public void testOnRead_MessageWithoutHeader_Ignored()
+    {
+        SortedMap<String, Timer> timers = metricRegistry.getTimers();
         Timer timer = timers.get("orbit.messaging[type:one_way_message,direction:inbound]");
         long count = timer.getCount();
 

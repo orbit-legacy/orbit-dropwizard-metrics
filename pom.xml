@@ -56,29 +56,13 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             <groupId>cloud.orbit</groupId>
             <artifactId>orbit-runtime</artifactId>
             <version>${orbit.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-core</artifactId>
             <version>${dropwizard.metrics.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-ganglia</artifactId>
-            <version>${dropwizard.metrics.version}</version>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-graphite</artifactId>
-            <version>${dropwizard.metrics.version}</version>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.coursera</groupId>
-            <artifactId>dropwizard-metrics-datadog</artifactId>
-            <version>1.1.10</version>
-            <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
