@@ -37,6 +37,21 @@ Metrics Exposed
     * Invocation Timers
         * orbit.actors.methodresponsetime[actor:%s,method:%s]
         * orbit.actors.chainresponsetime[actor:%s,method:%s]
+* ExecutionPoolMetrics
+    * ForkJoinPool Gauges
+        * orbit.stage.executionPool.activeThreadCount
+        * orbit.stage.executionPool.poolSize
+        * orbit.stage.executionPool.queuedSubmissionCount
+        * orbit.stage.executionPool.runningThreadCount
+        * orbit.stage.executionPool.queuedTaskCount
+        * orbit.stage.executionPool.stealCount
+    * ThreadPoolExecutor Gauges
+        * orbit.stage.executionPool.activeThreadCount
+        * orbit.stage.executionPool.poolSize
+        * orbit.stage.executionPool.completedTaskCount
+        * orbit.stage.executionPool.largestPoolSize
+        * orbit.stage.executionPool.taskCount
+        * orbit.stage.executionPool.remainingCapacity
 
 Instructions
 ======
