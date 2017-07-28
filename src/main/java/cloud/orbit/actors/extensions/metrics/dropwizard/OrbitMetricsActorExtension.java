@@ -44,6 +44,7 @@ import cloud.orbit.actors.runtime.Invocation;
 import cloud.orbit.actors.runtime.RemoteReference;
 import cloud.orbit.concurrent.Task;
 
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -98,7 +99,8 @@ public class OrbitMetricsActorExtension extends NamedPipelineExtension implement
             //process invocation metrics
             final RemoteReference toReference = invocation.getToReference();
             Class toClass = RemoteReference.getInterfaceClass(toReference);
-            metricRegistry.meter(getActorTypeMessageReceiveRateMetricsKey(toClass)).mark();
+            Method method = invocation.getMethod();
+            metricRegistry.meter(getActorTypeMessageReceiveRateMetricsKey(toClass, method)).mark();
         }
         ctx.fireRead(message);
     }
@@ -178,9 +180,9 @@ public class OrbitMetricsActorExtension extends NamedPipelineExtension implement
      * @param actorClass
      * @return
      */
-    public static String getActorTypeMessageReceiveRateMetricsKey(Class<? extends Actor> actorClass)
+    public static String getActorTypeMessageReceiveRateMetricsKey(Class<? extends Actor> actorClass, Method actorMethod)
     {
-        return String.format("orbit.actors.msg_received_rate[actor:%s]", actorClass.getSimpleName());
+        return String.format("orbit.actors.msg_received_rate[actor:%s,method:%s]", actorClass.getSimpleName(), actorMethod.getName());
     }
 
     /**
