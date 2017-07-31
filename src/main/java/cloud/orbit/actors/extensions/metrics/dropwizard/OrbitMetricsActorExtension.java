@@ -182,7 +182,9 @@ public class OrbitMetricsActorExtension extends NamedPipelineExtension implement
      */
     public static String getActorTypeMessageReceiveRateMetricsKey(Class<? extends Actor> actorClass, Method actorMethod)
     {
-        return String.format("orbit.actors.msg_received_rate[actor:%s,method:%s]", actorClass.getSimpleName(), actorMethod.getName());
+        String actorClassName = actorClass == null ? "(undefined)" : actorClass.getSimpleName();
+        String methodName = actorMethod == null ? "(undefined)" : actorMethod.getName();
+        return String.format("orbit.actors.msg_received_rate[actor:%s,method:%s]", actorClassName, methodName);
     }
 
     /**
