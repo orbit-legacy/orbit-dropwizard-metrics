@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
@@ -16,7 +17,7 @@ import cloud.orbit.actors.runtime.MessageDefinitions;
 public class InstrumentedMessageSerializer implements MessageSerializer {
     private final MetricRegistry metricRegistry;
     private final MessageSerializer messageSerializer;
-    private Map<Integer, Histogram> serializeMetrics;
+    private Map<Integer, Histogram> serializeMetrics = new ConcurrentHashMap<>();
     
     public InstrumentedMessageSerializer(MessageSerializer messageSerializer)
     {
