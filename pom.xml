@@ -41,7 +41,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <url>https://github.com/orbit/orbit-dropwizard/</url>
 
     <properties>
-        <orbit.version>1.0.0-rc1</orbit.version>
+        <orbit.version>1.5.0</orbit.version>
         <dropwizard.metrics.version>3.1.2</dropwizard.metrics.version>
     </properties>
 
