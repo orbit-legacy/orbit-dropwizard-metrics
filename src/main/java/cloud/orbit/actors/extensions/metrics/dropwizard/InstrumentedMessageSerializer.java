@@ -1,8 +1,5 @@
 package cloud.orbit.actors.extensions.metrics.dropwizard;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,7 +15,7 @@ public class InstrumentedMessageSerializer implements MessageSerializer {
     private final MetricRegistry metricRegistry;
     private final MessageSerializer messageSerializer;
     private Map<Integer, Histogram> serializeMetrics = new ConcurrentHashMap<>();
-    
+
     public InstrumentedMessageSerializer(MessageSerializer messageSerializer)
     {
         this(new MetricRegistry(), messageSerializer);
@@ -30,7 +27,7 @@ public class InstrumentedMessageSerializer implements MessageSerializer {
         this.messageSerializer = messageSerializer;
         setupMetrics();
     }
-    
+
     public MetricRegistry getMetricRegistry()
     {
         return metricRegistry;
@@ -47,26 +44,20 @@ public class InstrumentedMessageSerializer implements MessageSerializer {
     }        
 
     @Override
-    public Message deserializeMessage(BasicRuntime runtime, InputStream inputStream) throws Exception
-    {
-        return messageSerializer.deserializeMessage(runtime, inputStream);
+    public Message deserializeMessage(BasicRuntime runtime, byte[] payload) throws Exception {
+        return messageSerializer.deserializeMessage(runtime, payload);
     }
 
     @Override
-    public void serializeMessage(BasicRuntime runtime, OutputStream out, Message message) throws Exception
-    {
-        messageSerializer.serializeMessage(runtime, out, message);
-        
+    public byte[] serializeMessage(BasicRuntime runtime, Message message) throws Exception {
+        byte[] out = messageSerializer.serializeMessage(runtime, message);
+
         Histogram serializeHistogram = serializeMetrics.get(message.getMessageType());
-        if (serializeHistogram == null)
+        if (serializeHistogram != null)
         {
-            return;
+            serializeHistogram.update(out.length);
         }
-        
-        if (out instanceof ByteArrayOutputStream)
-        {
-            ByteArrayOutputStream outByteArray = (ByteArrayOutputStream) out;
-            serializeHistogram.update(outByteArray.size());
-        }
+
+        return out;
     }
 }
